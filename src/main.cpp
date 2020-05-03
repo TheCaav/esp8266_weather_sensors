@@ -4,6 +4,8 @@
 #include <Adafruit_BME280.h>
 #include <SPI.h>
 #include <Adafruit_AHT10.h>
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
 
 // BME SENSOR
 #define BME_SCK 14
@@ -25,11 +27,41 @@ Adafruit_Sensor *aht_humidity, *aht_temp;
 
 long delayTime;
 
+WiFiUDP udp;
+IPAddress host(10, 3, 141, 1);
+uint16_t port = 8125;
+const char *ssid = "raspi-webgui";
+const char *password = "ChangeMe";
+
 void printBMEValues() {
     sensors_event_t temp_event, pressure_event, humidity_event;
     bme_temp->getEvent(&temp_event);
     bme_pressure->getEvent(&pressure_event);
     bme_humidity->getEvent(&humidity_event);
+
+    udp.beginPacket(host, port);
+    String message = "temp,place=grow,sensor=bme280:" + String(temp_event.temperature) + "|g";
+    char chars[38];
+    message.toCharArray(chars, 38, 0);
+    udp.write(chars);
+    Serial.println(chars);
+    udp.endPacket();
+
+    udp.beginPacket(host, port);
+    message = "humi,place=grow,sensor=bme280:" + String(humidity_event.relative_humidity) + "|g";
+    chars[38];
+    message.toCharArray(chars, 38, 0);
+    udp.write(chars);
+    Serial.println(chars);
+    udp.endPacket();
+
+    udp.beginPacket(host, port);
+    message = "pres,place=grow,sensor=bme280:" + String(pressure_event.pressure) + "|g";
+    char chars2[40];
+    message.toCharArray(chars2, 40, 0);
+    udp.write(chars2);
+    Serial.println(chars2);
+    udp.endPacket();
 
     Serial.print(F("Temperature = "));
   Serial.print(temp_event.temperature);
@@ -51,6 +83,22 @@ void printAHTValues () {
     sensors_event_t temp;
     aht_humidity->getEvent(&humidity);
     aht_temp->getEvent(&temp);
+
+    udp.beginPacket(host, port);
+    String message = "temp,place=grow,sensor=aht10:" + String(temp.temperature) + "|g";
+    char chars[38];
+    message.toCharArray(chars, 38, 0);
+    udp.write(chars);
+    Serial.println(chars);
+    udp.endPacket();
+
+    udp.beginPacket(host, port);
+    message = "humi,place=grow,sensor=aht10:" + String(humidity.relative_humidity) + "|g";
+    chars[38];
+    message.toCharArray(chars, 38, 0);
+    udp.write(chars);
+    Serial.println(chars);
+    udp.endPacket();
 
     Serial.println("AHT10 Readings:");
 
@@ -86,6 +134,22 @@ void setup() {
     }
     
     delayTime = 5000;
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    
+    WiFi.setAutoReconnect(true);
+
+    Serial.println("");
+    Serial.println("Wifi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
 
     Serial.println("All great: Begin taking measurements");
 }
