@@ -3,15 +3,17 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <SPI.h>
-#include <Adafruit_AHT10.h>
+//#include <Adafruit_AHT10.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
 // BME SENSOR
+/** Needed for Spi
 #define BME_SCK 14
 #define BME_MISO 12
 #define BME_MOSI 13
-#define BME_CS 15
+#define BME_CS 15*/
+#define SOIL_MOISTURE_PIN A0
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme; // I2C
@@ -22,8 +24,8 @@ Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
 Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
 Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
 
-Adafruit_AHT10 aht;
-Adafruit_Sensor *aht_humidity, *aht_temp;
+//Adafruit_AHT10 aht;
+//Adafruit_Sensor *aht_humidity, *aht_temp;
 
 long delayTime;
 
@@ -31,9 +33,10 @@ WiFiUDP udp;
 IPAddress host(10, 3, 141, 1);
 uint16_t port = 8125;
 const char *ssid = "raspi-webgui";
-const char *password = "ChangeMe";
+const char *password = "PLACEHOLDER";
 
-void printBMEValues() {
+void printBMEValues()
+{
     sensors_event_t temp_event, pressure_event, humidity_event;
     bme_temp->getEvent(&temp_event);
     bme_pressure->getEvent(&pressure_event);
@@ -41,44 +44,45 @@ void printBMEValues() {
 
     udp.beginPacket(host, port);
     String message = "temp,place=grow,sensor=bme280:" + String(temp_event.temperature) + "|g";
-    char chars[38];
-    message.toCharArray(chars, 38, 0);
+    char chars[50];
+    message.toCharArray(chars, 40, 0);
     udp.write(chars);
     Serial.println(chars);
     udp.endPacket();
 
     udp.beginPacket(host, port);
     message = "humi,place=grow,sensor=bme280:" + String(humidity_event.relative_humidity) + "|g";
-    chars[38];
-    message.toCharArray(chars, 38, 0);
+    chars[50];
+    message.toCharArray(chars, 40, 0);
     udp.write(chars);
     Serial.println(chars);
     udp.endPacket();
 
     udp.beginPacket(host, port);
     message = "pres,place=grow,sensor=bme280:" + String(pressure_event.pressure) + "|g";
-    char chars2[40];
+    char chars2[50];
     message.toCharArray(chars2, 40, 0);
     udp.write(chars2);
     Serial.println(chars2);
     udp.endPacket();
 
     Serial.print(F("Temperature = "));
-  Serial.print(temp_event.temperature);
-  Serial.println(" *C");
+    Serial.print(temp_event.temperature);
+    Serial.println(" *C");
 
-  Serial.print(F("Humidity = "));
-  Serial.print(humidity_event.relative_humidity);
-  Serial.println(" %");
+    Serial.print(F("Humidity = "));
+    Serial.print(humidity_event.relative_humidity);
+    Serial.println(" %");
 
-  Serial.print(F("Pressure = "));
-  Serial.print(pressure_event.pressure);
-  Serial.println(" hPa");
+    Serial.print(F("Pressure = "));
+    Serial.print(pressure_event.pressure);
+    Serial.println(" hPa");
 
     Serial.println();
 }
 
-void printAHTValues () {
+/**void printAHTValues()
+{
     sensors_event_t humidity;
     sensors_event_t temp;
     aht_humidity->getEvent(&humidity);
@@ -102,27 +106,50 @@ void printAHTValues () {
 
     Serial.println("AHT10 Readings:");
 
-    Serial.print("\t\tHumidity: ");Serial.print(humidity.relative_humidity);Serial.println(" % rH");
-    Serial.print("\t\tTemperature: ");Serial.print(temp.temperature);Serial.println(" degrees C");
+    Serial.print("\t\tHumidity: ");
+    Serial.print(humidity.relative_humidity);
+    Serial.println(" % rH");
+    Serial.print("\t\tTemperature: ");
+    Serial.print(temp.temperature);
+    Serial.println(" degrees C");
+}*/
+
+void printSoilMoisture() {
+    int val = analogRead(SOIL_MOISTURE_PIN);
+
+    udp.beginPacket(host, port);
+    String message = "soil_moisture,place=grow,sensor=capacitative:" + String(val) + "|g";
+    char chars[60];
+    message.toCharArray(chars, 60, 0);
+    udp.write(chars);
+    Serial.println(chars);
+    udp.endPacket();
+
+    Serial.println("Moisture Reading:");
+
+    Serial.print("\t\tSoil Moisture: ");Serial.print(val);Serial.println(" Potatos");
 }
 
-void setup() {
+void setup()
+{
     Serial.begin(9600);
-    Serial.println("helllo world");
+    Serial.println("Hello world");
     //SPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
 
-
-    if (!bme.begin(0x76)) {
+    if (!bme.begin(0x76))
+    {
         Serial.println("Could not find BME280 Sensor!");
     }
-    Serial.println("-- Default Test BME280 --");
-    Serial.println("normal mode, 16x oversampling for all, filter off,");
-    Serial.println("0.5ms standby period");
-    bme_temp->printSensorDetails();
-    bme_pressure->printSensorDetails();
-    bme_humidity->printSensorDetails();
-    
-    if (!aht.begin()) {
+    else
+    {
+        Serial.println("-- Default Test BME280 --");
+        Serial.println("normal mode, 16x oversampling for all, filter off,");
+        Serial.println("0.5ms standby period");
+        bme_temp->printSensorDetails();
+        bme_pressure->printSensorDetails();
+        bme_humidity->printSensorDetails();
+    }
+    /**if (!aht.begin()) {
         Serial.println("Could not find AHT10!");
     } else {
         Serial.println("AHT found");
@@ -131,8 +158,8 @@ void setup() {
 
         aht_humidity = aht.getHumiditySensor();
         aht_humidity->printSensorDetails();
-    }
-    
+    }*/
+
     delayTime = 5000;
 
     WiFi.mode(WIFI_STA);
@@ -143,7 +170,7 @@ void setup() {
         delay(500);
         Serial.print(".");
     }
-    
+
     WiFi.setAutoReconnect(true);
 
     Serial.println("");
@@ -154,8 +181,10 @@ void setup() {
     Serial.println("All great: Begin taking measurements");
 }
 
-void loop() {
+void loop()
+{
     printBMEValues();
-    printAHTValues();
+    printSoilMoisture();
+    //printAHTValues();
     delay(delayTime);
 }
